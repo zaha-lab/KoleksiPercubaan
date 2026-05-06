@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Package, Download, CheckCircle, ArrowLeft, Star, Search, Menu, X, Trash2, CreditCard, FileText, Award, GraduationCap, Languages, Calculator, Beaker, Globe, Zap, Dna, Laptop, Briefcase, HeartHandshake, Library, BookOpenText, MessageCircle, ChevronDown, Sparkles, Bot, Loader2, Landmark, Wallet, ShieldCheck } from 'lucide-react';
+import { ShoppingCart, Package, Download, CheckCircle, ArrowLeft, Star, Search, Menu, X, Trash2, CreditCard, FileText, Award, GraduationCap, Languages, Calculator, Beaker, Globe, Zap, Dna, Laptop, Briefcase, HeartHandshake, Library, BookOpenText, MessageCircle, ChevronDown, Loader2, Landmark, Wallet, ShieldCheck } from 'lucide-react';
 
 const FALLBACK_IMAGE = "https://images.unsplash.com/photo-1516979187457-637abb4f9353?auto=format&fit=crop&q=80&w=800";
 
@@ -273,11 +273,6 @@ export default function App() {
   const [isSubjectDropdownOpen, setIsSubjectDropdownOpen] = useState(false);
   const [isMobileSubjectsOpen, setIsMobileSubjectsOpen] = useState(false);
 
-  // --- STATE GEMINI AI ---
-  const [aiTips, setAiTips] = useState({});
-  const [isAiLoading, setIsAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
-
   // --- STATE PEMBAYARAN ---
   const [paymentMethod, setPaymentMethod] = useState('fpx');
   const [showGateway, setShowGateway] = useState(false);
@@ -310,53 +305,6 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
-
-  // --- FUNGSI GEMINI AI ---
-  const fetchWithBackoff = async (url, options, retries = 5) => {
-    const delays = [1000, 2000, 4000, 8000, 16000];
-    for (let i = 0; i < retries; i++) {
-      try {
-        const res = await fetch(url, options);
-        if (res.ok) return res;
-        if (i === retries - 1) throw new Error(`Ralat HTTP: ${res.status}`);
-      } catch (error) {
-        if (i === retries - 1) throw error;
-        await new Promise(resolve => setTimeout(resolve, delays[i]));
-      }
-    }
-  };
-
-  const generateStudyTips = async (subjectName, productId) => {
-    if (aiTips[productId]) return; // Elak jana semula jika sudah ada
-    setIsAiLoading(true);
-    setAiError('');
-    try {
-      const apiKey = ""; 
-      const prompt = `Sebagai seorang guru pakar peperiksaan SPM di Malaysia yang mesra dan memberi inspirasi, berikan 3 tips ulang kaji atau teknik menjawab yang paling kritikal untuk subjek ${subjectName}. Berikan jawapan dalam Bahasa Melayu. Gunakan format 'bullet points' ringkas (tanpa pengenalan panjang) dengan emoji yang sesuai supaya pelajar mudah faham dan bersemangat.`;
-      
-      const response = await fetchWithBackoff(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: "Anda adalah Cikgu AI yang membantu pelajar SPM Malaysia mencapai keputusan cemerlang." }] }
-        })
-      });
-      
-      const data = await response.json();
-      const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
-      
-      if (text) {
-        setAiTips(prev => ({ ...prev, [productId]: text }));
-      } else {
-        throw new Error("Respons kosong");
-      }
-    } catch (err) {
-      setAiError('Gagal menjana tips AI pada masa ini. Sila cuba sebentar lagi.');
-    } finally {
-      setIsAiLoading(false);
-    }
-  };
 
   // --- FUNGSI TROLI ---
   const addToCart = (product) => {
@@ -973,50 +921,6 @@ export default function App() {
                   ))}
                 </ul>
               </div>
-
-              {/* BAHAGIAN GEMINI AI */}
-              <div className="mb-8 p-6 bg-gradient-to-br from-indigo-50 to-blue-50 rounded-2xl border border-indigo-100 relative overflow-hidden">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <Bot className="w-24 h-24 text-indigo-500" />
-                </div>
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="w-5 h-5 text-indigo-600" />
-                    <h3 className="font-bold text-indigo-900">Tips Ulang Kaji Cikgu AI ✨</h3>
-                  </div>
-                  
-                  {!aiTips[selectedProduct.id] && !isAiLoading && !aiError && (
-                    <div className="text-indigo-800/80 text-sm mb-4">
-                      Perlukan panduan pantas? Minta AI kami janakan tips ulang kaji dan teknik peperiksaan khusus untuk subjek <strong>{selectedProduct.subjectCode}</strong> ini.
-                    </div>
-                  )}
-
-                  {aiError && (
-                    <div className="text-red-500 text-sm mb-4 bg-red-50 p-3 rounded-lg border border-red-100">
-                      {aiError}
-                    </div>
-                  )}
-
-                  {aiTips[selectedProduct.id] ? (
-                    <div className="text-indigo-900 text-sm space-y-2 bg-white/60 p-4 rounded-xl border border-indigo-100/50 backdrop-blur-sm leading-relaxed">
-                       <div dangerouslySetInnerHTML={{ __html: aiTips[selectedProduct.id].replace(/\n/g, '<br/>').replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>') }} />
-                    </div>
-                  ) : (
-                    <button 
-                      onClick={() => generateStudyTips(selectedProduct.subjectCode, selectedProduct.id)}
-                      disabled={isAiLoading}
-                      className="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-indigo-200 transition-all flex items-center justify-center w-full sm:w-auto disabled:opacity-70"
-                    >
-                      {isAiLoading ? (
-                        <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Sedang Menjana...</>
-                      ) : (
-                        <><Bot className="w-4 h-4 mr-2" /> Jana Tips Sekarang ✨</>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
-              {/* TAMAT BAHAGIAN GEMINI AI */}
 
               <div className="mt-auto flex flex-col sm:flex-row gap-4">
                 <button 
